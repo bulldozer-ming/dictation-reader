@@ -1,0 +1,1508 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>받아쓰기 읽어주기</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
+<script src="https://cdn.tailwindcss.com/3.4.1"></script>
+<script>
+tailwind.config = { theme: { extend: {
+  colors: {
+    "on-primary-fixed-variant":"#763300","primary":"#9a4600","tertiary":"#675e3a","on-tertiary-fixed":"#221b01",
+    "error-container":"#ffdad6","tertiary-fixed-dim":"#d3c69a","secondary-fixed":"#a6f4b3","primary-fixed-dim":"#ffb68d",
+    "primary-fixed":"#ffdbc9","surface-variant":"#e4e2e1","on-secondary-fixed":"#00210b","surface-dim":"#dcd9d9",
+    "inverse-on-surface":"#f3f0f0","on-tertiary-container":"#463e1d","surface-container":"#f0eded","on-primary":"#ffffff",
+    "surface-bright":"#fcf9f8","on-secondary-container":"#24703c","on-primary-fixed":"#321200","on-tertiary":"#ffffff",
+    "on-background":"#1b1c1c","outline":"#8a7266","on-primary-container":"#682d00","error":"#ba1a1a",
+    "on-error-container":"#93000a","on-tertiary-fixed-variant":"#4f4724","on-secondary":"#ffffff","tertiary-fixed":"#f0e2b4",
+    "on-surface-variant":"#564338","background":"#fcf9f8","on-error":"#ffffff","surface-container-lowest":"#ffffff",
+    "on-surface":"#1b1c1c","inverse-surface":"#303030","tertiary-container":"#b5a97f","surface-container-high":"#eae7e7",
+    "surface":"#fcf9f8","secondary-fixed-dim":"#8bd899","secondary-container":"#a3f1b1","on-secondary-fixed-variant":"#005225",
+    "outline-variant":"#ddc1b3","surface-container-low":"#f6f3f2","primary-container":"#ff8a3d","secondary":"#1f6c39",
+    "inverse-primary":"#ffb68d","surface-container-highest":"#e4e2e1","surface-tint":"#9a4600"
+  },
+  borderRadius: { DEFAULT:"0.25rem", lg:"0.5rem", xl:"0.75rem", full:"9999px" },
+  spacing: {
+    "space-2xl":"3.5rem","margin":"2rem","space-lg":"1.75rem","space-sm":"0.75rem","margin-tv":"3.5rem",
+    "gutter-tv":"2.5rem","gutter":"1.5rem","space-xl":"2.5rem","space-md":"1.25rem","space-xs":"0.375rem"
+  },
+  fontFamily: { sans: ["Pretendard","Malgun Gothic","Apple SD Gothic Neo","system-ui","sans-serif"] },
+  fontSize: {
+    "body-lg":["18px",{lineHeight:"30px",fontWeight:"400"}],
+    "body-md":["16px",{lineHeight:"26px",fontWeight:"400"}],
+    "headline-lg":["28px",{lineHeight:"40px",fontWeight:"700"}],
+    "headline-md":["22px",{lineHeight:"32px",fontWeight:"600"}],
+    "sentence-active":["32px",{lineHeight:"52px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    "display-classroom":["44px",{lineHeight:"64px",letterSpacing:"-0.01em",fontWeight:"700"}],
+    "label-lg":["15px",{lineHeight:"20px",fontWeight:"600"}],
+    "label-md":["13px",{lineHeight:"18px",fontWeight:"500"}]
+  }
+}}};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<style>
+  body { overscroll-behavior: none; }
+  .kk { word-break: keep-all; }
+  .tgl { position: relative; flex: none; width: 2.5rem; height: 1.375rem; border-radius: 9999px; background: #e4e2e1; transition: .2s; }
+  .tgl::after { content: ""; position: absolute; top: 2px; left: 2px; width: 1.125rem; height: 1.125rem; border-radius: 9999px; background: #fff; transition: .2s; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+  input:checked + .tgl { background: #ff8a3d; }
+  input:checked + .tgl::after { transform: translateX(1.125rem); }
+  .hide-text [data-pos] .txt { filter: blur(9px); }
+  body.dragging #dropZone { outline: 3px dashed #ff8a3d; background: #fff5ea; }
+  .fill { font-variation-settings: 'FILL' 1; }
+</style>
+</head>
+<body class="bg-surface text-on-surface antialiased">
+
+<!-- ================= 머리말 ================= -->
+<header class="sticky top-0 z-30 bg-surface/90 backdrop-blur-xl shadow-[0_2px_12px_rgba(102,96,86,0.06)]">
+  <div class="w-full px-gutter lg:px-margin-tv py-space-sm flex flex-wrap items-center justify-between gap-x-space-md gap-y-space-xs">
+    <div class="min-w-0">
+      <div class="text-headline-md tracking-tight whitespace-nowrap">📝 받아쓰기 읽어주기</div>
+      <div class="text-label-md text-on-surface-variant hidden sm:block">급수표 PDF를 올리면 문장을 찾아서, 클릭하면 또박또박 읽어줘요.</div>
+    </div>
+    <nav class="order-last lg:order-none w-full lg:w-auto flex items-center justify-center gap-space-xs bg-surface-container-low px-space-xs py-1 rounded-full overflow-x-auto" id="nav">
+      <button type="button" data-nav="class" class="px-space-md py-1.5 rounded-full text-label-lg whitespace-nowrap transition-all">수업 진행</button>
+      <button type="button" data-nav="manage" class="px-space-md py-1.5 rounded-full text-label-lg whitespace-nowrap transition-all">급수표 등록·관리</button>
+      <button type="button" data-nav="voice" class="px-space-md py-1.5 rounded-full text-label-lg whitespace-nowrap transition-all">낭독 음성 설정</button>
+    </nav>
+    <div class="flex items-center gap-space-xs bg-secondary-container text-on-secondary-container px-space-sm py-1.5 rounded-full max-w-[16rem]">
+      <span class="material-symbols-outlined text-secondary text-body-md">school</span>
+      <span class="text-label-lg font-bold truncate" id="modeBadge">수업 모드</span>
+    </div>
+  </div>
+</header>
+
+<main class="w-full">
+  <!-- 진행 상태 / 알림 -->
+  <div id="statusBox" class="hidden w-full px-gutter lg:px-margin-tv pt-space-sm">
+    <div class="bg-tertiary-fixed/50 rounded-xl px-space-md py-space-sm text-label-lg text-on-tertiary-fixed-variant">
+      <div id="statusText"></div>
+      <div id="bar" class="hidden h-2 bg-surface-container-high rounded-full overflow-hidden mt-2"><i class="block h-full w-0 bg-primary-container transition-all"></i></div>
+    </div>
+  </div>
+
+  <!-- ================= 수업 진행 ================= -->
+  <section id="viewClass" class="flex flex-col w-full pb-40">
+    <div class="w-full px-gutter lg:px-margin-tv pt-space-md pb-space-xs">
+      <!-- 업로드 띠 -->
+      <div id="dropZone" class="w-full bg-surface-container-lowest rounded-xl p-space-sm shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-space-sm transition-all">
+        <div class="flex items-center gap-space-sm flex-wrap">
+          <button type="button" id="uploadBtn" class="flex items-center gap-space-xs px-space-md py-2 bg-surface-container-low hover:bg-surface-container rounded-lg transition-all">
+            <span class="material-symbols-outlined text-primary text-body-lg">upload_file</span>
+            <span class="text-label-lg font-bold">급수표 PDF 올리기</span>
+            <span class="text-label-md text-on-surface-variant hidden xl:inline">(끌어다 놓거나 클릭)</span>
+          </button>
+          <input type="file" id="file" accept="application/pdf,.pdf" hidden>
+          <div id="chips" class="flex items-center gap-space-xs flex-wrap"></div>
+        </div>
+        <div id="countInfo" class="text-label-md text-on-surface-variant flex items-center gap-1.5"></div>
+      </div>
+
+      <!-- 선생님 설정 -->
+      <div class="mt-space-sm w-full bg-surface-container-low rounded-xl p-space-sm flex flex-wrap items-center justify-between gap-space-sm shadow-sm">
+        <div class="flex items-center flex-wrap gap-space-xs">
+          <div class="flex items-center bg-surface-container-lowest px-space-sm py-1.5 rounded-full shadow-sm">
+            <span class="material-symbols-outlined text-primary text-body-md mr-1">record_voice_over</span>
+            <span class="text-label-md text-on-surface-variant mr-1.5">목소리</span>
+            <select id="voice" class="bg-transparent text-label-lg outline-none cursor-pointer pr-1 max-w-[14rem]"></select>
+          </div>
+          <div class="flex items-center bg-surface-container-lowest px-space-sm py-1.5 rounded-full shadow-sm">
+            <span class="material-symbols-outlined text-tertiary text-body-md mr-1">speed</span>
+            <span class="text-label-md text-on-surface-variant mr-1.5">빠르기</span>
+            <select id="rate" class="bg-transparent text-label-lg outline-none cursor-pointer">
+              <option value="0.8">천천히 (0.8x)</option>
+              <option value="0.9" selected>조금 천천히 (0.9x)</option>
+              <option value="1">보통 (1.0x)</option>
+              <option value="1.1">조금 빠르게 (1.1x)</option>
+              <option value="1.2">빠르게 (1.2x)</option>
+            </select>
+          </div>
+          <div class="flex items-center bg-surface-container-lowest px-space-sm py-1.5 rounded-full shadow-sm">
+            <span class="material-symbols-outlined text-tertiary text-body-md mr-1">replay</span>
+            <span class="text-label-md text-on-surface-variant mr-1.5">반복</span>
+            <select id="repeat" class="bg-transparent text-label-lg outline-none cursor-pointer">
+              <option value="1">1번</option><option value="2">2번</option><option value="3" selected>3번</option>
+            </select>
+          </div>
+          <div class="flex items-center bg-surface-container-lowest px-space-sm py-1.5 rounded-full shadow-sm">
+            <span class="material-symbols-outlined text-primary text-body-md mr-1">hourglass_top</span>
+            <span class="text-label-md text-on-surface-variant mr-1.5" title="자동 읽기에서 한 문장을 읽은 뒤, 다음 문장으로 넘어가기 전에 기다리는 시간">자동 쓸 시간</span>
+            <select id="writeTime" class="bg-transparent text-label-lg outline-none cursor-pointer">
+              <option value="0">없음</option><option value="10">10초</option><option value="15">15초</option>
+              <option value="20" selected>20초</option><option value="30">30초</option><option value="45">45초</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex items-center flex-wrap gap-space-xs ml-auto">
+          <label class="inline-flex items-center gap-2 cursor-pointer bg-surface-container-lowest px-space-sm py-1.5 rounded-full shadow-sm select-none">
+            <input type="checkbox" id="readNo" class="sr-only" checked><span class="tgl"></span>
+            <span class="text-label-md font-semibold">번호도 읽기</span>
+          </label>
+          <label class="inline-flex items-center gap-2 cursor-pointer bg-surface-container-lowest px-space-sm py-1.5 rounded-full shadow-sm select-none">
+            <input type="checkbox" id="chunk" class="sr-only" checked><span class="tgl"></span>
+            <span class="text-label-md font-semibold">띄어 읽기</span>
+          </label>
+          <label class="inline-flex items-center gap-2 cursor-pointer bg-surface-container-lowest px-space-sm py-1.5 rounded-full shadow-sm select-none">
+            <input type="checkbox" id="hide" class="sr-only"><span class="tgl"></span>
+            <span class="text-label-md font-semibold">문장 가리기</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- 급수 탭 + 단원 -->
+    <div class="w-full px-gutter lg:px-margin-tv pt-space-xs pb-space-sm">
+      <div class="w-full overflow-x-auto py-1"><div id="tabs" class="flex items-center gap-1.5 min-w-max pb-1"></div></div>
+      <div id="unitBar" class="hidden mt-space-sm flex-col sm:flex-row items-start sm:items-center justify-between gap-space-sm bg-surface-container-low px-space-md py-space-sm rounded-xl">
+        <div class="flex items-center gap-space-sm min-w-0">
+          <span id="unitCount" class="bg-primary text-on-primary font-bold px-space-sm py-1 rounded-full text-label-lg shadow-sm whitespace-nowrap"></span>
+          <h2 id="unitTitle" class="text-headline-md font-bold tracking-tight truncate"></h2>
+        </div>
+        <div class="flex items-center gap-space-xs self-end sm:self-auto">
+          <button type="button" id="shuffle" class="flex items-center gap-1.5 px-space-md py-2 bg-surface-container-lowest hover:bg-surface-container-high rounded-full shadow-sm text-label-lg transition-all active:scale-95">
+            <span class="material-symbols-outlined text-body-lg text-on-surface-variant">shuffle</span><span id="shuffleText">순서 섞기</span>
+          </button>
+          <button type="button" id="bigBtn" class="flex items-center gap-1.5 px-space-md py-2 bg-surface-container-lowest hover:bg-surface-container-high rounded-full shadow-sm text-label-lg transition-all active:scale-95">
+            <span class="material-symbols-outlined text-body-lg text-primary">tv</span><span>큰 화면 (TV)</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 문장 카드 -->
+    <div class="w-full px-gutter lg:px-margin-tv pt-space-xs">
+      <div id="list" class="grid grid-cols-1 md:grid-cols-2 gap-space-md"></div>
+    </div>
+  </section>
+
+  <!-- ================= 급수표 등록·관리 ================= -->
+  <section id="viewManage" class="hidden flex-col w-full pb-32">
+    <div class="w-full px-gutter lg:px-margin-tv pt-space-md pb-space-md">
+      <div id="manageBanner"></div>
+      <div class="mt-space-md bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-space-md">
+        <div class="flex flex-1 items-center gap-space-sm min-w-0">
+          <div class="w-9 h-9 rounded-lg bg-primary-fixed flex items-center justify-center text-primary shrink-0"><span class="material-symbols-outlined">menu_book</span></div>
+          <div class="flex-1 min-w-0">
+            <label class="block text-label-md text-on-surface-variant mb-0.5" for="setName">급수표 이름</label>
+            <input id="setName" type="text" placeholder="예: 1학년 1학기 급수표" class="w-full max-w-lg bg-surface-container-low text-headline-md px-space-sm py-1.5 rounded-lg focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary">
+          </div>
+        </div>
+        <button type="button" id="reupload" class="flex items-center gap-1.5 px-space-md py-2.5 rounded-full bg-surface-container-high hover:bg-surface-dim text-label-lg transition-all self-start md:self-auto">
+          <span class="material-symbols-outlined text-body-md">upload_file</span><span>다시 올리기</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="w-full px-gutter lg:px-margin-tv">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+        <!-- 왼쪽: 원본 PDF -->
+        <div class="lg:col-span-5 flex flex-col gap-space-sm lg:sticky lg:top-28">
+          <div class="bg-surface-container-lowest rounded-xl p-space-sm shadow-sm flex items-center justify-between gap-space-xs flex-wrap">
+            <div class="flex items-center gap-space-xs min-w-0">
+              <span class="material-symbols-outlined text-primary text-body-md">picture_as_pdf</span>
+              <div class="min-w-0">
+                <span id="pdfName" class="text-label-lg block truncate max-w-[220px]"></span>
+                <span id="pdfMeta" class="text-label-md text-on-surface-variant block"></span>
+              </div>
+            </div>
+            <div id="pdfTools" class="flex items-center gap-1 bg-surface-container-low px-2 py-1 rounded-full">
+              <button type="button" id="pdfPrev" class="w-7 h-7 rounded-full flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant" title="이전 쪽"><span class="material-symbols-outlined text-label-lg">chevron_left</span></button>
+              <span class="text-label-md px-1 font-bold" id="pdfPage"></span>
+              <button type="button" id="pdfNext" class="w-7 h-7 rounded-full flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant" title="다음 쪽"><span class="material-symbols-outlined text-label-lg">chevron_right</span></button>
+              <div class="h-4 w-px bg-surface-variant mx-1"></div>
+              <button type="button" id="pdfOut" class="w-7 h-7 rounded-full flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant" title="축소"><span class="material-symbols-outlined text-label-lg">zoom_out</span></button>
+              <span class="text-label-md text-on-surface-variant px-0.5 min-w-[3ch] text-center" id="pdfZoom">100%</span>
+              <button type="button" id="pdfIn" class="w-7 h-7 rounded-full flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant" title="확대"><span class="material-symbols-outlined text-label-lg">zoom_in</span></button>
+            </div>
+          </div>
+          <div id="pdfBox" class="bg-surface-container-lowest rounded-xl shadow-md overflow-auto max-h-[70vh]">
+            <canvas id="pdfCanvas" class="block mx-auto"></canvas>
+            <div id="pdfEmpty" class="hidden p-space-lg text-center text-on-surface-variant text-label-md leading-relaxed">
+              <span class="material-symbols-outlined text-4xl text-outline-variant block mb-1">picture_as_pdf</span>
+              원본 PDF는 올린 직후에만 볼 수 있어요.<br>저장해 둔 급수표를 불러왔거나 직접 입력한 경우에는 보이지 않아요.
+            </div>
+          </div>
+          <div class="bg-surface-container-low rounded-xl p-space-sm flex items-start gap-space-xs text-on-surface-variant">
+            <span class="material-symbols-outlined text-primary text-body-md shrink-0 mt-0.5">help</span>
+            <span class="text-label-md leading-relaxed">원본과 비교해서 글자나 띄어쓰기가 틀린 문장은 오른쪽에서 바로 고쳐 주세요. 고친 내용은 자동으로 저장돼요.</span>
+          </div>
+        </div>
+
+        <!-- 오른쪽: 인식된 문장 편집 -->
+        <div class="lg:col-span-7 flex flex-col gap-space-md">
+          <div class="bg-surface-container-lowest rounded-xl p-space-sm shadow-sm">
+            <div class="flex items-center justify-between gap-space-xs mb-space-xs px-1">
+              <span class="text-label-md font-bold flex items-center gap-1"><span class="material-symbols-outlined text-label-lg text-primary">navigation</span>급수 바로가기</span>
+              <button type="button" id="toggleAll" class="text-label-md text-primary font-bold hover:underline">전체 펼쳐보기</button>
+            </div>
+            <div id="jump" class="flex items-center gap-1.5 overflow-x-auto py-1"></div>
+          </div>
+          <div id="editor" class="flex flex-col gap-space-md"></div>
+          <details id="pasteBox" class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm">
+            <summary class="cursor-pointer text-label-lg font-bold">✏️ 글자를 붙여 넣어서 만들기 (PDF 없이 직접 입력)</summary>
+            <p class="text-label-md text-on-surface-variant mt-2">한 줄에 한 문장씩 적어요. <code>&lt;1급&gt; 단원 이름</code> 또는 <code>1급</code> 줄을 넣으면 급수가 나뉘고, 앞의 번호(<code>1.</code>)는 자동으로 정리돼요.</p>
+            <textarea id="raw" class="w-full min-h-[180px] mt-2 p-space-sm bg-surface-container-low rounded-lg text-body-md focus:outline-none focus:ring-2 focus:ring-primary" placeholder="1급&#10;1. 매미가 맴맴&#10;2. 단풍이 울긋불긋&#10;&#10;2급&#10;1. 뜀틀에 올라가서"></textarea>
+            <button type="button" id="apply" class="mt-2 px-space-md py-2 rounded-full bg-primary-container text-on-primary text-label-lg font-bold hover:bg-primary transition-colors">이 내용으로 문장 만들기</button>
+          </details>
+        </div>
+      </div>
+    </div>
+
+    <!-- 아래 고정 막대 -->
+    <div class="fixed bottom-0 left-0 right-0 z-40 bg-surface/95 backdrop-blur-md shadow-[0_-4px_20px_rgba(102,96,86,0.12)]">
+      <div class="max-w-7xl mx-auto px-gutter lg:px-margin-tv py-3 flex items-center justify-between gap-space-md flex-wrap">
+        <div class="flex items-center gap-space-sm min-w-0">
+          <div class="flex items-center justify-center w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container shrink-0"><span class="material-symbols-outlined text-body-md font-bold">check</span></div>
+          <div class="min-w-0">
+            <div class="text-label-lg font-bold" id="mStatus"></div>
+            <span class="text-label-md text-on-surface-variant" id="saveInfo">고치면 자동으로 저장돼요</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-space-sm">
+          <button type="button" id="saveNow" class="px-space-md py-2.5 rounded-full bg-surface-container hover:bg-surface-container-high text-label-lg transition-all">저장</button>
+          <button type="button" id="startClass" class="px-space-lg py-2.5 rounded-full bg-primary-container hover:bg-primary text-on-primary text-label-lg font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+            <span>저장하고 수업 시작</span><span class="material-symbols-outlined text-body-md fill">play_arrow</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ================= 아래 재생 막대 ================= -->
+<div id="player" class="fixed bottom-0 left-0 right-0 z-40 bg-surface-container-lowest/95 backdrop-blur-md shadow-[0_-4px_20px_rgba(0,0,0,0.08)] py-space-sm px-gutter lg:px-margin-tv">
+  <div class="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-space-sm">
+    <div class="flex items-center gap-space-md w-full lg:w-auto justify-between lg:justify-start">
+      <div class="flex items-center gap-space-xs">
+        <span id="pDot" class="w-3 h-3 rounded-full bg-outline-variant"></span>
+        <span class="text-headline-md font-bold" id="pStatus"></span>
+      </div>
+      <div id="pTimer" class="hidden items-center gap-2 bg-primary-container text-on-primary px-space-md py-1.5 rounded-2xl shadow-md">
+        <span class="material-symbols-outlined text-2xl">hourglass_empty</span>
+        <span class="text-headline-lg font-black tracking-wider" id="pTimerText"></span>
+      </div>
+    </div>
+    <div class="flex items-center gap-space-xs sm:gap-space-sm flex-wrap justify-center">
+      <button type="button" id="prev" class="flex items-center gap-1 px-space-md py-2.5 bg-surface-container-low hover:bg-surface-container font-bold rounded-full text-label-lg transition-all active:scale-95 shadow-sm disabled:opacity-40 disabled:cursor-default"><span class="material-symbols-outlined text-body-lg">skip_previous</span><span class="hidden sm:inline">이전</span></button>
+      <button type="button" id="again" class="flex items-center gap-1 px-space-md py-2.5 bg-surface-container-low hover:bg-surface-container font-bold rounded-full text-label-lg transition-all active:scale-95 shadow-sm disabled:opacity-40 disabled:cursor-default"><span class="material-symbols-outlined text-body-lg">replay</span><span>다시 읽기</span></button>
+      <button type="button" id="next" class="flex items-center gap-1 px-space-md py-2.5 bg-surface-container-low hover:bg-surface-container font-bold rounded-full text-label-lg transition-all active:scale-95 shadow-sm disabled:opacity-40 disabled:cursor-default"><span>다음</span><span class="material-symbols-outlined text-body-lg">skip_next</span></button>
+      <button type="button" id="auto" class="flex items-center gap-2 px-space-lg py-3 bg-primary-container hover:bg-primary text-on-primary font-black rounded-full text-lg shadow-lg hover:shadow-xl transition-all active:scale-95 ring-2 ring-primary-fixed disabled:opacity-40 disabled:cursor-default"><span class="material-symbols-outlined text-2xl" id="autoIcon">fast_forward</span><span id="autoText">자동 읽기</span></button>
+      <button type="button" id="stop" class="flex items-center gap-1 px-space-md py-2.5 bg-error-container hover:bg-error/20 text-on-error-container font-bold rounded-full text-label-lg transition-all active:scale-95"><span class="material-symbols-outlined text-body-lg text-error">stop</span><span class="hidden sm:inline">멈춤</span></button>
+    </div>
+    <div class="hidden xl:flex items-center gap-2">
+      <span class="text-label-md text-on-surface-variant">속도:</span>
+      <div id="rateChips" class="flex items-center gap-2"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 큰 화면 (TV) ================= -->
+<div id="tv" class="hidden fixed inset-0 z-[60] bg-background flex-col items-center justify-between px-margin-tv py-space-lg overflow-y-auto select-none">
+  <button type="button" id="tvClose" aria-label="큰 화면 닫기" class="absolute top-space-md right-space-md w-14 h-14 rounded-full bg-surface-container-low/90 hover:bg-surface-container text-on-surface-variant flex items-center justify-center shadow transition-all active:scale-95"><span class="material-symbols-outlined text-3xl">close</span></button>
+  <div class="relative w-full flex flex-col items-center justify-center flex-1 max-w-5xl mx-auto">
+    <div class="absolute -top-12 w-96 h-96 bg-primary-fixed/30 rounded-full blur-3xl pointer-events-none -z-10"></div>
+    <div class="mb-space-lg">
+      <div class="inline-flex items-center gap-space-xs px-space-md py-space-xs rounded-full bg-surface-container shadow-sm text-headline-md tracking-tight">
+        <span class="material-symbols-outlined text-secondary text-2xl fill">menu_book</span>
+        <span id="tvUnit" class="font-bold"></span>
+      </div>
+    </div>
+    <div class="flex flex-col items-center justify-center my-space-xs">
+      <span class="text-primary-container font-black leading-none tracking-tighter tabular-nums text-[150px] md:text-[210px]"><span id="tvNum">–</span><span id="tvNumUnit" class="text-[70px] md:text-[100px] font-bold text-primary ml-1 tracking-normal">번</span></span>
+      <div class="flex items-center gap-2 mt-2 px-space-md py-1 rounded-full bg-surface-container-high/60 text-on-surface-variant text-label-lg">
+        <span id="tvDot" class="w-2.5 h-2.5 rounded-full bg-primary-container"></span><span id="tvRep"></span>
+      </div>
+    </div>
+    <div class="w-full max-w-4xl mt-space-lg mb-space-xl px-gutter">
+      <div class="relative bg-surface-container-lowest rounded-[2rem] shadow-lg p-space-md md:p-space-lg flex items-center justify-center overflow-hidden min-h-[108px]">
+        <div id="tvLock" class="absolute top-3 right-6 flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container text-on-surface-variant text-label-md shadow-sm z-20"></div>
+        <p id="tvSentence" class="kk text-sentence-active md:text-display-classroom text-center transition-all duration-500"></p>
+      </div>
+    </div>
+    <div id="tvTimer" class="flex items-center justify-center gap-space-sm bg-surface-container-low px-space-xl py-space-sm rounded-full shadow-sm">
+      <div class="relative flex items-center justify-center w-14 h-14">
+        <svg class="w-full h-full -rotate-90" viewBox="0 0 48 48">
+          <circle class="text-surface-variant" cx="24" cy="24" r="20" fill="none" stroke="currentColor" stroke-width="4"></circle>
+          <circle id="tvRing" class="text-primary-container transition-all duration-1000" cx="24" cy="24" r="20" fill="none" stroke="currentColor" stroke-width="4" stroke-dasharray="125.6" stroke-dashoffset="0" stroke-linecap="round"></circle>
+        </svg>
+        <span class="material-symbols-outlined text-primary-container text-2xl absolute">hourglass_top</span>
+      </div>
+      <div class="flex items-baseline gap-1">
+        <span id="tvSec" class="text-[64px] font-black tabular-nums tracking-tight leading-none"></span>
+        <span class="text-headline-md text-on-surface-variant font-bold">초</span>
+      </div>
+    </div>
+  </div>
+  <div class="w-full max-w-4xl mt-space-lg">
+    <div class="bg-surface-container-lowest/90 backdrop-blur-md p-space-sm rounded-[28px] shadow-xl flex items-center justify-center gap-space-sm md:gap-space-md flex-wrap">
+      <button type="button" id="tvPrev" class="flex items-center justify-center gap-2 px-space-lg py-space-md rounded-2xl bg-surface-container text-headline-md font-bold hover:bg-surface-container-high active:scale-95 transition-all shadow-sm disabled:opacity-40"><span class="material-symbols-outlined text-3xl">arrow_back</span><span>이전</span></button>
+      <button type="button" id="tvAgain" class="flex items-center justify-center gap-2 px-space-lg py-space-md rounded-2xl bg-surface-container text-headline-md font-bold hover:bg-surface-container-high active:scale-95 transition-all shadow-sm disabled:opacity-40"><span class="material-symbols-outlined text-3xl">replay</span><span>다시</span></button>
+      <button type="button" id="tvAuto" class="flex items-center justify-center gap-2 px-space-xl py-space-md rounded-2xl bg-primary-container text-on-primary text-headline-md font-bold hover:opacity-95 shadow-lg shadow-primary-container/30 active:scale-95 transition-all min-w-[200px]"><span class="material-symbols-outlined text-3xl fill" id="tvAutoIcon">play_arrow</span><span id="tvAutoText">자동 읽기</span></button>
+      <button type="button" id="tvNext" class="flex items-center justify-center gap-2 px-space-lg py-space-md rounded-2xl bg-primary-fixed text-on-primary-fixed text-headline-md font-bold hover:bg-primary-fixed-dim active:scale-95 transition-all shadow-sm disabled:opacity-40"><span>다음</span><span class="material-symbols-outlined text-3xl">arrow_forward</span></button>
+      <button type="button" id="tvReveal" class="flex items-center justify-center gap-2 px-space-lg py-space-md rounded-2xl bg-surface-container text-on-surface-variant text-headline-md font-bold hover:bg-surface-container-high active:scale-95 transition-all shadow-sm"><span class="material-symbols-outlined text-3xl" id="tvRevealIcon">visibility</span><span id="tvRevealText">정답 보기</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 목소리 설정 창 ================= -->
+<div id="voiceModal" class="hidden fixed inset-0 z-50 items-center justify-center p-space-sm sm:p-space-md overflow-y-auto bg-inverse-surface/60 backdrop-blur-sm">
+  <div class="relative w-full max-w-4xl bg-surface-container-lowest rounded-xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
+    <div class="px-space-lg py-space-md bg-surface-container-low flex items-center justify-between gap-space-md shrink-0">
+      <div class="flex items-center gap-space-sm flex-wrap">
+        <h1 class="text-headline-md font-bold tracking-tight">🎙️ 사람 같은 목소리 쓰기</h1>
+        <span class="px-space-sm py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed-variant text-label-md font-bold flex items-center gap-1"><span class="material-symbols-outlined text-[15px] fill">verified</span>추천 · 고품질 음성</span>
+      </div>
+      <button type="button" id="vmClose" aria-label="닫기" class="w-9 h-9 rounded-full bg-surface-container-highest text-on-surface-variant hover:bg-surface-variant flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">close</span></button>
+    </div>
+    <div class="overflow-y-auto px-space-lg lg:px-space-xl py-space-lg flex flex-col gap-space-lg">
+      <div class="bg-primary-fixed/40 p-space-md rounded-xl flex flex-col sm:flex-row items-start gap-space-md shadow-sm">
+        <div class="w-12 h-12 rounded-full bg-primary-container text-on-primary flex items-center justify-center shrink-0 shadow-sm"><span class="material-symbols-outlined text-headline-md fill">sentiment_satisfied</span></div>
+        <div class="flex-1 flex flex-col gap-space-xs">
+          <p class="text-body-md font-semibold leading-relaxed">크롬의 기본 목소리는 기계음처럼 딱딱해서 끊겨 들려요. 구글 음성(Neural2 / WaveNet)을 연결하면 훨씬 자연스럽게 읽어줘요.</p>
+          <div class="inline-flex flex-wrap items-center gap-1.5 px-space-sm py-1 bg-surface-container-lowest text-on-primary-fixed-variant rounded-full text-label-md shadow-sm self-start">
+            <span class="material-symbols-outlined text-primary text-[17px]">savings</span>
+            <span class="font-bold">한 달 100만 글자까지 무료</span>
+            <span class="text-on-surface-variant">급수표 한 개가 2천 글자쯤이라 받아쓰기 용도로는 한도 안에서 충분해요.</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="keyBanner" class="hidden bg-secondary-container/70 p-space-md rounded-xl flex-col sm:flex-row sm:items-center justify-between gap-space-sm shadow-sm">
+        <div class="flex items-center gap-space-sm">
+          <div class="w-8 h-8 rounded-full bg-secondary text-on-secondary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-[18px]">check</span></div>
+          <div>
+            <p class="text-label-lg font-bold text-on-secondary-container">연결됐어요! 아래에서 ⭐ 고품질 목소리를 고르세요.</p>
+            <p class="text-label-md text-on-secondary-fixed-variant">API 키가 이 컴퓨터에 저장되어 있어요.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-surface-container-low p-space-md rounded-xl flex flex-col gap-space-sm">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <span class="text-label-lg font-bold flex items-center gap-1"><span class="material-symbols-outlined text-primary text-[18px]">menu_book</span>처음 한 번만 설정하세요 (4단계)</span>
+          <a class="inline-flex items-center gap-1 px-space-sm py-1 bg-surface-container-lowest hover:bg-surface-container-high rounded-full text-label-md text-primary font-bold shadow-sm transition-colors" href="https://console.cloud.google.com/apis/library/texttospeech.googleapis.com" target="_blank" rel="noopener noreferrer"><span>Google Cloud 바로가기</span><span class="material-symbols-outlined text-[15px]">open_in_new</span></a>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-sm">
+          <div class="bg-surface-container-lowest p-space-sm rounded-lg flex flex-col gap-1.5 shadow-sm">
+            <div class="flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-primary-fixed text-on-primary-fixed text-label-md font-bold flex items-center justify-center shrink-0">1</span><span class="text-label-md font-bold">API 사용 켜기</span></div>
+            <p class="text-label-md text-on-surface-variant">위 링크에서 <b class="text-on-surface">Text-to-Speech</b>의 '사용'을 눌러요. (처음이면 결제 카드 등록이 필요해요)</p>
+          </div>
+          <div class="bg-surface-container-lowest p-space-sm rounded-lg flex flex-col gap-1.5 shadow-sm">
+            <div class="flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-primary-fixed text-on-primary-fixed text-label-md font-bold flex items-center justify-center shrink-0">2</span><span class="text-label-md font-bold">API 키 만들기</span></div>
+            <p class="text-label-md text-on-surface-variant"><a class="text-primary font-bold underline" href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">사용자 인증 정보</a>에서 <b class="text-on-surface">만들기 → API 키</b>를 눌러요.</p>
+          </div>
+          <div class="bg-surface-container-lowest p-space-sm rounded-lg flex flex-col gap-1.5 shadow-sm">
+            <div class="flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-primary-fixed text-on-primary-fixed text-label-md font-bold flex items-center justify-center shrink-0">3</span><span class="text-label-md font-bold">키 제한 (권장)</span></div>
+            <p class="text-label-md text-on-surface-variant">API 제한사항에서 <b class="text-on-surface">Cloud Text-to-Speech API만</b> 체크해요.</p>
+          </div>
+          <div class="bg-surface-container-lowest p-space-sm rounded-lg flex flex-col gap-1.5 shadow-sm">
+            <div class="flex items-center gap-2"><span class="w-6 h-6 rounded-full bg-primary text-on-primary text-label-md font-bold flex items-center justify-center shrink-0">4</span><span class="text-label-md font-bold">키 붙여넣기</span></div>
+            <p class="text-label-md text-on-surface-variant">아래 칸에 넣고 <b class="text-primary">저장하고 들어보기</b>를 눌러요.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-surface-container-low p-space-md rounded-xl flex flex-col gap-space-sm">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <label class="text-label-lg font-bold flex items-center gap-1.5" for="apiKey"><span class="material-symbols-outlined text-primary text-[18px]">key</span>Google Cloud API 키</label>
+          <span class="text-label-md text-on-surface-variant flex items-center gap-1"><span class="material-symbols-outlined text-[15px]">lock</span>이 컴퓨터의 브라우저에만 저장돼요</span>
+        </div>
+        <div class="flex flex-col sm:flex-row items-stretch gap-space-sm">
+          <div class="relative flex-1">
+            <input id="apiKey" type="password" autocomplete="off" placeholder="AIza…" class="w-full h-12 pl-4 pr-11 bg-surface-container-lowest rounded-lg text-body-md tracking-wider focus:outline-none shadow-sm focus:ring-2 focus:ring-primary-container">
+            <button type="button" id="eye" title="키 보이기/숨기기" class="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface p-1"><span class="material-symbols-outlined text-[20px]" id="eyeIcon">visibility_off</span></button>
+          </div>
+          <div class="flex items-center gap-space-xs shrink-0">
+            <button type="button" id="saveKey" class="h-12 px-space-md rounded-full bg-primary-container hover:bg-primary text-on-primary text-label-lg font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"><span class="material-symbols-outlined text-[19px]">volume_up</span><span>저장하고 들어보기</span></button>
+            <button type="button" id="clearKey" class="h-12 px-space-md rounded-full bg-surface-container-lowest hover:bg-error-container hover:text-on-error-container text-on-surface-variant text-label-lg font-semibold flex items-center gap-1 shadow-sm transition-colors"><span class="material-symbols-outlined text-[19px]">delete_outline</span><span>키 지우기</span></button>
+          </div>
+        </div>
+        <p id="keyStatus" class="text-label-md text-on-surface-variant min-h-[1.2em]"></p>
+        <p class="text-label-md text-on-surface-variant flex items-start gap-1"><span class="material-symbols-outlined text-[15px] text-secondary mt-0.5">verified_user</span>키는 목소리를 만들 때 구글 서버로 보내는 요청에만 쓰여요. 다른 선생님과 컴퓨터를 같이 쓴다면 쓴 뒤에 '키 지우기'를 눌러 주세요.</p>
+      </div>
+
+      <div class="flex flex-col gap-space-sm">
+        <div class="flex items-center justify-between flex-wrap gap-1">
+          <h2 class="text-headline-md font-bold">낭독 목소리 선택</h2>
+          <span class="text-label-md text-on-surface-variant">'미리듣기'를 눌러 들어 보세요</span>
+        </div>
+        <div id="voiceCards" class="grid grid-cols-1 md:grid-cols-2 gap-space-md"></div>
+      </div>
+    </div>
+    <div class="px-space-lg py-space-md bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-space-sm shrink-0">
+      <div class="flex items-center gap-1 text-on-surface-variant text-label-md"><span class="material-symbols-outlined text-primary text-[17px]">tips_and_updates</span><span>수업 도중에도 위쪽 '낭독 음성 설정'에서 언제든 바꿀 수 있어요.</span></div>
+      <button type="button" id="vmDone" class="px-space-xl py-2.5 rounded-full bg-primary-container hover:bg-primary text-on-primary text-label-lg font-bold flex items-center gap-1.5 shadow-md active:scale-95 transition-all"><span class="material-symbols-outlined text-[20px]">school</span><span>이 설정으로 수업하기</span></button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="hidden fixed left-1/2 -translate-x-1/2 bottom-28 z-[70] max-w-[90vw] bg-inverse-surface text-inverse-on-surface px-space-md py-space-sm rounded-full text-label-lg shadow-xl"></div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// order: 섞은 순서(원래 문장 번호의 배열), pos: order 안의 위치, phase: idle | num | read | write
+const state = {
+  groups: [], g: 0, order: [], pos: -1, read: new Set(), shuffled: false,
+  auto: false, token: 0, setId: null, setName: "", view: "class",
+  phase: "idle", rep: 0, reveal: false, open: new Set([0]),
+};
+const pdfState = { doc: null, page: 1, zoom: 1, name: "" };
+const cur = () => state.groups[state.g];
+const countItems = () => state.groups.reduce((s, g) => s + g.items.length, 0);
+
+/* ================= 저장 (이 브라우저에만) ================= */
+const STORE = "dictation.sets", LAST = "dictation.last", SETTINGS = "dictation.settings3";  // 예전 저장값은 안 건드린 항목까지 저장돼 있어서 쓰지 않음
+const VOICE_KEY = "dictation.voice", API_KEY = "dictation.ttsKey";
+const store = {
+  get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
+  set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} },
+};
+const loadSets = () => { try { return JSON.parse(store.get(STORE)) || []; } catch { return []; } };
+const saveSets = (sets) => store.set(STORE, JSON.stringify(sets));
+
+function saveCurrent(name, text) {
+  const sets = loadSets();
+  let s = sets.find((x) => x.id === state.setId) || sets.find((x) => x.name === name);
+  if (!s) sets.push((s = { id: Date.now().toString(36), name }));
+  s.name = name; s.text = text; s.savedAt = Date.now();
+  saveSets(sets);
+  state.setId = s.id; state.setName = name;
+  store.set(LAST, s.id);
+  renderChips(); renderBadge();
+}
+
+let saveTimer = null;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(persist, 500);
+  $("saveInfo").textContent = "저장 중…";
+}
+function persist() {
+  clearTimeout(saveTimer);
+  if (!state.groups.length) return;
+  const name = $("setName").value.trim() || state.setName || "내 급수표";
+  saveCurrent(name, serialize());
+  $("saveInfo").textContent = "마지막 자동 저장: " + new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function openSet(id) {
+  const s = loadSets().find((x) => x.id === id);
+  if (!s) return;
+  stop();
+  state.setId = id; state.setName = s.name;
+  pdfState.doc = null;
+  store.set(LAST, id);
+  buildFromText(s.text);
+  setStatus(`📂 "${s.name}"을(를) 불러왔어요.`);
+  setTimeout(() => setStatus(""), 2500);
+}
+
+$("chips").addEventListener("click", (e) => {
+  const open = e.target.closest("[data-open]"), del = e.target.closest("[data-del]");
+  if (open) { showView("class"); openSet(open.dataset.open); }
+  if (del) {
+    const s = loadSets().find((x) => x.id === del.dataset.del);
+    if (!s || !confirm(`"${s.name}"을(를) 저장 목록에서 지울까요?`)) return;
+    saveSets(loadSets().filter((x) => x.id !== s.id));
+    if (state.setId === s.id) { state.setId = null; store.set(LAST, null); }
+    renderChips();
+  }
+});
+
+function renderChips() {
+  const sets = loadSets().sort((a, b) => b.savedAt - a.savedAt);
+  $("chips").innerHTML = sets.map((s) => `
+    <div class="flex items-center gap-space-xs ${s.id === state.setId ? "bg-primary-fixed text-on-primary-fixed shadow-sm" : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"} pl-space-sm pr-1 py-1 rounded-full text-label-md">
+      <button type="button" data-open="${s.id}" class="flex items-center gap-1 font-semibold"><span class="material-symbols-outlined text-sm">description</span>${esc(s.name)}</button>
+      <button type="button" data-del="${s.id}" title="목록에서 지우기" class="w-6 h-6 rounded-full hover:bg-black/10 flex items-center justify-center"><span class="material-symbols-outlined text-sm">close</span></button>
+    </div>`).join("");
+}
+
+function renderBadge() { $("modeBadge").textContent = state.setName || "수업 모드"; }
+
+/* 설정(빠르기·반복 등)도 기억 */
+const SETTING_IDS = ["rate", "repeat", "writeTime", "readNo", "chunk", "hide"];
+function loadSettings() {
+  let s = {};
+  try { s = JSON.parse(store.get(SETTINGS)) || {}; } catch {}
+  for (const id of SETTING_IDS) {
+    if (!(id in s)) continue;
+    const el = $(id);
+    if (el.type === "checkbox") el.checked = !!s[id];
+    else if ([...el.options].some((o) => o.value === String(s[id]))) el.value = s[id];  // 없어진 옵션(예: 예전 빠르기)은 무시
+  }
+  document.body.classList.toggle("hide-text", $("hide").checked);
+}
+// 선생님이 직접 바꾼 항목만 저장함 (안 건드린 항목은 기본값이 바뀌면 같이 바뀌도록)
+function saveSetting(id) {
+  let s = {};
+  try { s = JSON.parse(store.get(SETTINGS)) || {}; } catch {}
+  const el = $(id);
+  s[id] = el.type === "checkbox" ? el.checked : el.value;
+  store.set(SETTINGS, JSON.stringify(s));
+}
+for (const id of SETTING_IDS) $(id).addEventListener("change", () => {
+  saveSetting(id); syncRateChips();
+  if (id === "hide") document.body.classList.toggle("hide-text", $("hide").checked);
+  if (id === "writeTime") showTimer(state.timerSec || 0, state.timerMax || 0);
+});
+
+/* ================= 알림 ================= */
+let toastTimer = null;
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg; t.classList.remove("hidden");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add("hidden"), 3500);
+}
+function setStatus(msg, progress) {
+  $("statusBox").classList.toggle("hidden", !msg);
+  $("statusText").textContent = msg || "";
+  const bar = $("bar");
+  bar.classList.toggle("hidden", progress == null);
+  if (progress != null) bar.firstElementChild.style.width = Math.round(progress * 100) + "%";
+}
+
+/* ================= 화면 전환 ================= */
+const NAV_ON = ["bg-primary-container", "text-on-primary", "font-bold", "shadow-[0_2px_8px_-2px_rgba(255,138,61,0.25)]"];
+const NAV_OFF = ["text-on-surface-variant", "hover:bg-surface-container-high", "hover:text-on-surface"];
+function showView(v) {
+  if (state.view !== v) stop();
+  state.view = v;
+  $("viewClass").classList.toggle("hidden", v !== "class");
+  $("viewManage").classList.toggle("hidden", v !== "manage");
+  $("viewManage").classList.toggle("flex", v === "manage");
+  $("player").classList.toggle("hidden", v !== "class");
+  document.querySelectorAll("[data-nav]").forEach((b) => {
+    const on = b.dataset.nav === v;
+    b.classList.remove(...NAV_ON, ...NAV_OFF);
+    b.classList.add(...(on ? NAV_ON : NAV_OFF));
+  });
+  renderAll();
+  if (v === "manage") renderPdfPage();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll("[data-nav]").forEach((b) => b.addEventListener("click", () => {
+  if (b.dataset.nav === "voice") openVoiceModal(); else showView(b.dataset.nav);
+}));
+
+function renderAll() {
+  renderChips(); renderBadge();
+  if (state.view === "class") renderClass(); else renderManage();
+}
+
+/* ================= PDF 올리기 ================= */
+$("uploadBtn").onclick = $("reupload").onclick = () => $("file").click();
+$("file").onchange = (e) => { if (e.target.files[0]) loadPdf(e.target.files[0]); e.target.value = ""; };
+window.addEventListener("dragover", (e) => { e.preventDefault(); document.body.classList.add("dragging"); });
+window.addEventListener("dragleave", (e) => { if (!e.relatedTarget) document.body.classList.remove("dragging"); });
+window.addEventListener("drop", (e) => {
+  e.preventDefault(); document.body.classList.remove("dragging");
+  const f = e.dataTransfer.files[0];
+  if (f) loadPdf(f);
+});
+
+async function loadPdf(file) {
+  try {
+    stop();
+    setStatus(`"${file.name}" 여는 중…`, 0);
+    const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+    let text = "";
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
+      text += pageToText(await page.getTextContent(), page.getViewport({ scale: 1 }).width) + "\n";
+      setStatus(`글자 찾는 중… (${p}/${pdf.numPages}쪽)`, p / pdf.numPages);
+    }
+    // 글자 정보가 거의 없으면 스캔본 → OCR
+    if (text.replace(/\s/g, "").length < 10) text = await ocrPdf(pdf);
+    state.setId = null;
+    buildFromText(text.trim());
+    const n = countItems();
+    if (n) {
+      Object.assign(pdfState, { doc: pdf, page: 1, zoom: 1, name: file.name });
+      const name = file.name.replace(/\.pdf$/i, "");
+      saveCurrent(name, serialize());
+      setStatus("");
+      showView("manage");
+      toast(`✅ 문장 ${n}개를 찾아서 저장했어요`);
+    } else {
+      setStatus("문장을 찾지 못했어요. '급수표 등록·관리'에서 직접 입력해 주세요.");
+      showView("manage");
+    }
+  } catch (err) {
+    console.error(err);
+    setStatus("PDF를 읽지 못했어요: " + err.message);
+  }
+}
+
+// pdf.js 텍스트 조각을 y좌표 기준으로 줄로 묶기
+function toRows(parts) {
+  const rows = [];
+  for (const p of parts) {
+    let row = rows.find((r) => Math.abs(r.y - p.y) < p.h * 0.5);
+    if (!row) rows.push((row = { y: p.y, parts: [] }));
+    row.parts.push(p);
+  }
+  rows.sort((a, b) => b.y - a.y);
+  rows.forEach((r) => r.parts.sort((a, b) => a.x - b.x));
+  return rows;
+}
+
+// 한 줄의 조각을 이어 붙이기.
+// 원고지(한 칸에 한 글자) 급수표는 글자 사이에 늘 틈이 있으므로,
+// 글자 하나짜리끼리는 '빈 칸 하나' 만큼 벌어졌을 때만 띄어쓰기로 봄
+function joinParts(parts) {
+  let line = "", prev = null;
+  for (const p of parts) {
+    if (prev) {
+      const gap = p.x - (prev.x + prev.w);
+      const single = [...prev.s].length === 1 && [...p.s].length === 1;
+      const numThenText = /^\d+$/.test(prev.s) && !/^\d/.test(p.s);
+      if (numThenText || (single ? gap > Math.max(prev.w, p.w) * 0.9 : gap > 1.5)) line += " ";
+    }
+    line += p.s; prev = p;
+  }
+  return line;
+}
+
+function pageToText(content, pageWidth) {
+  const parts = content.items
+    .filter((it) => it.str && it.str.trim())
+    .map((it) => ({
+      s: it.str.trim(), x: it.transform[4], y: it.transform[5],
+      w: it.width, h: Math.abs(it.transform[3]) || 10,
+    }));
+  const rows = toRows(parts);
+  const headerRe = /^<\s*(\d{1,2})\s*급\s*>\s*(?:\d+\s*\.\s*)?(.*)$/;
+  const mid = pageWidth / 2;
+  const cols = [[], []].map(() => ({ level: null, out: [] }));
+  let structured = false;
+
+  for (const r of rows) {
+    const texts = [0, 1].map((c) => joinParts(r.parts.filter((p) => (p.x < mid) === (c === 0))));
+    // 급수 제목이 있는 줄을 만나면 양쪽 단의 급수를 새로 정함 (없는 단은 '없음' → 안내문 무시)
+    if (texts.some((t) => headerRe.test(t))) {
+      structured = true;
+      texts.forEach((t, c) => {
+        const m = t.match(headerRe);
+        cols[c].level = m ? m[1] : null;
+        if (m) cols[c].out.push({ level: +m[1], lines: [`<${m[1]}급> ${m[2].trim()}`] });
+      });
+      continue;
+    }
+    texts.forEach((t, c) => {
+      const col = cols[c], blk = col.out[col.out.length - 1];
+      if (!col.level || !t) return;
+      const m = t.match(/^(\d{1,2})\s+(.+)$/);
+      if (m) blk.lines.push(`${m[1]}. ${m[2]}`);
+      else if (/^[.!?,"'”’\s]+$/.test(t) && blk.lines.length > 1) blk.lines[blk.lines.length - 1] += t.trim(); // 다음 줄로 밀린 문장부호
+    });
+  }
+
+  if (!structured) return rows.map((r) => joinParts(r.parts)).join("\n");
+  return cols.flatMap((c) => c.out)
+    .sort((a, b) => a.level - b.level)
+    .map((b) => b.lines.join("\n"))
+    .join("\n\n");
+}
+
+async function ocrPdf(pdf) {
+  setStatus("스캔된 PDF예요. 그림에서 글자를 읽는 중… (처음엔 1분쯤 걸릴 수 있어요)", 0);
+  const worker = await Tesseract.createWorker("kor");
+  let text = "";
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const vp = page.getViewport({ scale: 2.5 });
+    const canvas = document.createElement("canvas");
+    canvas.width = vp.width; canvas.height = vp.height;
+    await page.render({ canvasContext: canvas.getContext("2d"), viewport: vp }).promise;
+    const { data } = await worker.recognize(canvas);
+    text += data.text + "\n";
+    setStatus(`그림에서 글자 읽는 중… (${p}/${pdf.numPages}쪽)`, p / pdf.numPages);
+  }
+  await worker.terminate();
+  return text.replace(/[ \t]+/g, " ");
+}
+
+/* ================= 글자 ↔ 급수/문장 ================= */
+function buildFromText(text, keepG = 0) {
+  const groups = [];
+  let cur = null;
+  const ensure = (name, unit = "") => { cur = { name, unit, items: [] }; groups.push(cur); };
+  // '1급', '<1급> 기분을 말해요', '[1급] 1. 기분을 말해요' 모두 급수 제목으로 봄
+  const levelRe = /^\s*[\[<【(]?\s*(\d{1,2})\s*급\s*[\]>】)]?\s*[:·-]?\s*/;
+
+  for (let line of text.split(/\r?\n/)) {
+    line = line.trim();
+    if (!line) continue;
+    const lv = line.match(levelRe);
+    if (lv) {
+      const rest = line.slice(lv[0].length);
+      // 뒤에 번호가 없으면 단원명, 번호가 있으면 첫 문장
+      if (!/^\d/.test(rest)) { ensure(lv[1] + "급", rest); continue; }
+      ensure(lv[1] + "급");
+      line = rest;
+    }
+    // 한 줄 안에 '1. … 2. …' 처럼 여러 문장이 있으면 나누기
+    const pieces = line.split(/(?:^|\s)(?=\d{1,2}\s*[.)]\s*\S)/).map((s) => s.trim()).filter(Boolean);
+    for (let s of pieces) {
+      const numbered = /^\d{1,2}\s*[.)]/.test(s);
+      s = s.replace(/^\d{1,2}\s*[.)]\s*/, "").trim();
+      if (!/[가-힣]/.test(s)) continue;             // 한글 없는 줄(쪽번호 등) 건너뛰기
+      if (!numbered && /급수표|받아쓰기|학년|이름|^반\b/.test(s) && s.length < 20) continue; // 제목류
+      if (!cur) ensure("전체");
+      cur.items.push(s);
+    }
+  }
+  state.groups = groups.filter((g) => g.items.length);
+  state.open = new Set([0]);
+  selectGroup(keepG < state.groups.length ? keepG : 0);
+}
+
+function serialize() {
+  return state.groups.map((g) => {
+    const head = /^\d+급$/.test(g.name) ? `<${g.name}>${g.unit ? " " + g.unit : ""}\n` : "";
+    return head + g.items.map((s, i) => `${i + 1}. ${s}`).join("\n");
+  }).join("\n\n");
+}
+
+function selectGroup(i) {
+  stop();
+  state.g = i;
+  const g = state.groups[i];
+  state.order = g ? g.items.map((_, k) => k) : [];
+  state.shuffled = false;
+  state.pos = -1; state.phase = "idle"; state.rep = 0; state.reveal = false;
+  state.read = new Set();
+  renderAll();
+}
+
+/* ================= 수업 화면 ================= */
+function renderClass() {
+  renderTabs(); renderUnitBar(); renderCards(); renderCount(); updatePlayer(); updateTV();
+}
+
+function renderCount() {
+  const n = countItems(), gs = state.groups;
+  $("countInfo").innerHTML = n
+    ? `<span class="w-2 h-2 rounded-full bg-secondary inline-block"></span>인식된 문장: <strong class="text-on-surface">${n}개${gs.length > 1 ? ` (${gs[0].name}~${gs[gs.length - 1].name})` : ""}</strong>`
+    : "";
+}
+
+function renderTabs() {
+  $("tabs").innerHTML = state.groups.length > 1 ? state.groups.map((g, i) => `
+    <button type="button" data-tab="${i}" title="${esc(g.unit)}" class="px-space-md py-1.5 rounded-full text-label-lg transition-all active:scale-95 ${i === state.g ? "bg-primary-container text-on-primary font-bold shadow-md" : "bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant font-medium shadow-sm"}">${esc(g.name)}</button>`).join("") : "";
+}
+$("tabs").addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) selectGroup(+b.dataset.tab); });
+
+function renderUnitBar() {
+  const g = cur();
+  $("unitBar").classList.toggle("hidden", !g);
+  $("unitBar").classList.toggle("flex", !!g);
+  if (!g) return;
+  $("unitCount").textContent = `${g.items.length}문장`;
+  $("unitTitle").textContent = g.name + (g.unit ? ` · ${g.unit}` : "");
+  $("shuffleText").textContent = state.shuffled ? "원래 순서" : "순서 섞기";
+}
+
+function cardHTML(pos) {
+  const g = cur(), k = state.order[pos], text = esc(g.items[k]), n = pos + 1;
+  const orig = state.shuffled ? `원래 ${k + 1}번` : "";
+  if (pos === state.pos) {
+    const reading = state.phase === "num" || state.phase === "read";
+    const label = state.phase === "num" ? "번호를 읽는 중" : state.phase === "read" ? `지금 읽는 중 (${state.rep}번째 반복)` : state.phase === "write" ? "받아쓰는 시간" : "선택됨";
+    const icon = state.phase === "write" ? "edit" : reading ? "graphic_eq" : "check_circle";
+    return `
+    <div data-pos="${pos}" class="relative flex items-center justify-between gap-space-sm p-space-md bg-tertiary-fixed rounded-xl shadow-lg ring-4 ring-primary-container/40 cursor-pointer">
+      <div class="flex items-center gap-space-md min-w-0">
+        <div class="w-14 h-14 shrink-0 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-bold text-2xl shadow-md">${n}</div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 mb-1 flex-wrap">
+            <span class="px-space-sm py-0.5 rounded-full bg-primary text-on-primary text-label-md font-bold flex items-center gap-1 ${reading ? "animate-pulse" : ""}"><span class="material-symbols-outlined text-xs">${icon}</span>${label}</span>
+            ${orig ? `<span class="text-on-tertiary-fixed-variant text-label-md">${orig}</span>` : ""}
+          </div>
+          <p class="txt kk text-sentence-active font-extrabold tracking-tight">${text}</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-space-sm shrink-0">
+        ${reading ? `<div class="hidden sm:flex items-center gap-1 h-8 px-3 bg-surface-container-lowest/80 rounded-full">
+          <span class="w-1.5 h-3 bg-primary-container rounded-full animate-bounce"></span><span class="w-1.5 h-6 bg-primary-container rounded-full animate-bounce [animation-delay:0.15s]"></span>
+          <span class="w-1.5 h-4 bg-primary-container rounded-full animate-bounce [animation-delay:0.3s]"></span><span class="w-1.5 h-7 bg-primary-container rounded-full animate-bounce [animation-delay:0.1s]"></span></div>` : ""}
+        <span class="w-14 h-14 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-md"><span class="material-symbols-outlined text-3xl">volume_up</span></span>
+      </div>
+    </div>`;
+  }
+  if (state.read.has(pos)) {
+    return `
+    <div data-pos="${pos}" class="group relative flex items-center justify-between gap-space-sm p-space-md bg-surface-container-lowest rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer">
+      <div class="flex items-center gap-space-md min-w-0">
+        <div class="w-12 h-12 shrink-0 rounded-full bg-secondary-container flex items-center justify-center shadow-inner"><span class="material-symbols-outlined text-secondary text-2xl font-bold">check</span></div>
+        <div class="min-w-0">
+          <span class="text-label-md text-secondary font-bold">${n}번 완료${orig ? " · " + orig : ""}</span>
+          <p class="txt kk text-headline-lg text-on-surface-variant line-through decoration-secondary/40">${text}</p>
+        </div>
+      </div>
+      <span class="shrink-0 w-11 h-11 rounded-full bg-surface-container-low text-on-surface-variant group-hover:text-primary group-hover:bg-primary-fixed flex items-center justify-center transition-colors"><span class="material-symbols-outlined text-body-lg">replay</span></span>
+    </div>`;
+  }
+  return `
+    <div data-pos="${pos}" class="group relative flex items-center justify-between gap-space-sm p-space-md bg-surface-container-lowest rounded-xl shadow-sm hover:shadow-md hover:bg-surface-container-low transition-all cursor-pointer">
+      <div class="flex items-center gap-space-md min-w-0">
+        <div class="w-12 h-12 shrink-0 rounded-full bg-surface-container text-on-surface-variant flex items-center justify-center font-bold text-headline-md">${n}</div>
+        <div class="min-w-0">
+          <span class="text-label-md text-on-surface-variant">대기 중${orig ? " · " + orig : ""}</span>
+          <p class="txt kk text-headline-lg text-on-surface">${text}</p>
+        </div>
+      </div>
+      <span class="shrink-0 w-11 h-11 rounded-full bg-surface-container-low text-on-surface-variant group-hover:text-primary group-hover:bg-primary-fixed flex items-center justify-center transition-colors"><span class="material-symbols-outlined text-body-lg">play_arrow</span></span>
+    </div>`;
+}
+
+function renderCards() {
+  const g = cur();
+  if (!g) {
+    $("list").innerHTML = `
+    <div class="col-span-full bg-surface-container-lowest rounded-xl p-space-xl shadow-sm text-center">
+      <div class="text-5xl mb-space-sm">📝</div>
+      <p class="text-headline-md">처음 오셨나요? 3단계로 시작해요</p>
+      <ol class="grid grid-cols-1 md:grid-cols-3 gap-space-sm mt-space-md text-left">
+        <li class="bg-surface-container-low rounded-xl p-space-md flex gap-space-sm items-start">
+          <span class="w-8 h-8 rounded-full bg-primary-container text-on-primary font-bold flex items-center justify-center shrink-0">1</span>
+          <div><div class="text-label-lg font-bold">급수표 PDF 올리기</div><p class="text-label-md text-on-surface-variant mt-0.5">우리 반 받아쓰기 급수표 PDF를 올리면 문장을 찾아서 급수별로 나눠 줘요.</p></div>
+        </li>
+        <li class="bg-surface-container-low rounded-xl p-space-md flex gap-space-sm items-start">
+          <span class="w-8 h-8 rounded-full bg-primary-container text-on-primary font-bold flex items-center justify-center shrink-0">2</span>
+          <div><div class="text-label-lg font-bold">인식된 문장 확인하기</div><p class="text-label-md text-on-surface-variant mt-0.5">원본과 비교해서 글자나 띄어쓰기가 틀린 곳은 바로 고쳐요. 고친 내용은 자동으로 저장돼요.</p></div>
+        </li>
+        <li class="bg-surface-container-low rounded-xl p-space-md flex gap-space-sm items-start">
+          <span class="w-8 h-8 rounded-full bg-primary-container text-on-primary font-bold flex items-center justify-center shrink-0">3</span>
+          <div><div class="text-label-lg font-bold">눌러서 읽어주기</div><p class="text-label-md text-on-surface-variant mt-0.5">문장을 누르면 그 문장만 읽어 줘요. '자동 읽기'를 누르면 끝까지 이어서 읽어 줘요.</p></div>
+        </li>
+      </ol>
+      <p class="text-label-md text-on-surface-variant mt-space-md">🔒 올린 PDF는 이 컴퓨터 안에서만 처리되고, 저장된 급수표도 이 브라우저에만 남아요. 다른 선생님에게는 보이지 않아요.</p>
+      <div class="flex justify-center flex-wrap gap-space-sm mt-space-md">
+        <button type="button" data-go="upload" class="px-space-lg py-2.5 rounded-full bg-primary-container text-on-primary text-label-lg font-bold hover:bg-primary shadow-md transition-all">PDF 올리기</button>
+        <button type="button" data-go="manage" class="px-space-lg py-2.5 rounded-full bg-surface-container hover:bg-surface-container-high text-label-lg transition-all">직접 입력하기</button>
+      </div>
+    </div>`;
+    return;
+  }
+  $("list").innerHTML = state.order.map((_, pos) => cardHTML(pos)).join("");
+}
+
+$("list").addEventListener("click", (e) => {
+  const go = e.target.closest("[data-go]");
+  if (go) { go.dataset.go === "upload" ? $("file").click() : showView("manage"); return; }
+  const card = e.target.closest("[data-pos]");
+  if (card) { setAuto(false); play(+card.dataset.pos); }
+});
+
+function updatePlayer() {
+  const g = cur(), n = g ? g.items.length : 0;
+  $("pStatus").textContent = !g ? "급수표를 올려 주세요" : state.pos >= 0 ? `${g.name} · ${state.pos + 1} / ${n}번` : `${g.name} · 준비됐어요`;
+  $("pDot").className = "w-3 h-3 rounded-full " + (state.phase === "idle" ? "bg-outline-variant" : "bg-primary-container animate-ping");
+  const none = !g;
+  $("prev").disabled = none || state.pos <= 0;
+  $("next").disabled = none || state.pos >= n - 1;
+  $("again").disabled = none || state.pos < 0;
+  $("auto").disabled = none;
+  document.querySelectorAll("#rateChips [data-rate]").forEach((b) => {
+    const on = +b.dataset.rate === +$("rate").value;
+    b.className = `px-2.5 py-1 rounded-full text-label-md ${on ? "bg-primary-container text-on-primary font-bold" : "bg-surface-container text-on-surface-variant hover:text-on-surface"}`;
+  });
+}
+
+function initRateChips() {
+  $("rateChips").innerHTML = [0.8, 0.9, 1, 1.1, 1.2].map((r) => `<button type="button" data-rate="${r}">${r.toFixed(1)}x</button>`).join("");
+  $("rateChips").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-rate]");
+    if (b) { $("rate").value = b.dataset.rate; saveSetting("rate"); syncRateChips(); }
+  });
+}
+const syncRateChips = updatePlayer;
+
+$("shuffle").onclick = () => {
+  stop();
+  const g = cur();
+  if (!g) return;
+  if (state.shuffled) {
+    state.order = g.items.map((_, k) => k);
+  } else {
+    const o = g.items.map((_, k) => k);
+    for (let i = o.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [o[i], o[j]] = [o[j], o[i]];
+    }
+    state.order = o;
+  }
+  state.shuffled = !state.shuffled;
+  state.pos = -1; state.phase = "idle"; state.read = new Set();
+  renderAll();
+};
+
+/* ================= 큰 화면 (TV) ================= */
+function openTV() {
+  if (!cur()) return;
+  $("tv").classList.remove("hidden"); $("tv").classList.add("flex");
+  state.reveal = false;
+  updateTV();
+  document.documentElement.requestFullscreen?.().catch(() => {});
+}
+function closeTV() {
+  $("tv").classList.add("hidden"); $("tv").classList.remove("flex");
+  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+}
+document.addEventListener("fullscreenchange", () => {
+  if (!document.fullscreenElement && !$("tv").classList.contains("hidden")) closeTV();
+});
+const tvOpen = () => !$("tv").classList.contains("hidden");
+$("bigBtn").onclick = openTV;
+$("tvClose").onclick = closeTV;
+$("tvReveal").onclick = () => { state.reveal = !state.reveal; updateTV(); };
+
+function updateTV() {
+  const g = cur(), n = g ? g.items.length : 0;
+  $("tvUnit").textContent = g ? g.name + (g.unit ? ` · ${g.unit}` : "") : "";
+  $("tvNum").textContent = state.pos >= 0 ? state.pos + 1 : "–";
+  $("tvNumUnit").classList.toggle("hidden", state.pos < 0);
+  const times = $("repeat").value;
+  $("tvRep").textContent = state.phase === "num" ? "번호를 읽는 중" : state.phase === "read" ? `${state.rep}회 반복 읽는 중 (총 ${times}회)`
+    : state.phase === "write" ? "✏️ 받아쓰는 시간" : state.pos >= 0 ? "다시 읽거나 다음으로 넘어가세요" : "▶ 자동 읽기를 누르면 시작해요";
+  $("tvDot").className = "w-2.5 h-2.5 rounded-full bg-primary-container " + (state.phase === "read" || state.phase === "num" ? "animate-ping" : "");
+  const text = g && state.pos >= 0 ? g.items[state.order[state.pos]] : "";
+  const s = $("tvSentence");
+  s.textContent = text;
+  s.classList.toggle("blur-[15px]", !state.reveal);
+  s.classList.toggle("opacity-25", !state.reveal);
+  s.classList.toggle("font-extrabold", state.reveal);
+  $("tvLock").innerHTML = state.reveal
+    ? '<span class="material-symbols-outlined text-base text-secondary">lock_open</span><span class="font-semibold text-secondary">정답 공개됨</span>'
+    : '<span class="material-symbols-outlined text-base">lock</span><span class="font-semibold">문장 가림 중</span>';
+  $("tvRevealIcon").textContent = state.reveal ? "visibility_off" : "visibility";
+  $("tvRevealText").textContent = state.reveal ? "정답 가리기" : "정답 보기";
+  $("tvPrev").disabled = !g || state.pos <= 0;
+  $("tvNext").disabled = !g || state.pos >= n - 1;
+  $("tvAgain").disabled = !g || state.pos < 0;
+}
+
+$("tvPrev").onclick = () => play(state.pos - 1);
+$("tvNext").onclick = () => play(state.pos + 1);
+$("tvAgain").onclick = () => play(state.pos);
+$("tvAuto").onclick = () => toggleAuto();
+
+/* ================= 급수표 등록·관리 ================= */
+function renderManage() {
+  const n = countItems(), gs = state.groups.length;
+  $("manageBanner").innerHTML = n ? `
+    <div class="relative overflow-hidden bg-secondary-container/40 rounded-xl p-space-md shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
+      <div class="flex items-center gap-space-sm">
+        <div class="w-10 h-10 rounded-full bg-secondary text-on-secondary flex items-center justify-center shrink-0 shadow-sm"><span class="material-symbols-outlined text-body-lg">check_circle</span></div>
+        <div>
+          <div class="text-headline-md">문장 ${n}개를 찾았어요!</div>
+          <p class="text-body-md text-on-surface-variant">${gs > 1 ? `총 ${gs}개 급수, ` : ""}문장 ${n}개예요. 원본과 비교해 보고 틀린 곳은 고쳐 주세요.</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-space-xs text-on-tertiary-container bg-tertiary-fixed/60 px-space-sm py-1.5 rounded-full self-start md:self-auto">
+        <span class="material-symbols-outlined text-body-md">lightbulb</span>
+        <span class="text-label-md font-medium">띄어쓰기나 문장부호가 틀리면 바로 고쳐 주세요. 자동으로 저장돼요.</span>
+      </div>
+    </div>` : `
+    <div class="bg-tertiary-fixed/40 rounded-xl p-space-md shadow-sm flex items-center gap-space-sm">
+      <span class="material-symbols-outlined text-tertiary text-3xl">info</span>
+      <div><div class="text-headline-md">아직 급수표가 없어요</div><p class="text-body-md text-on-surface-variant">위의 '다시 올리기'로 PDF를 올리거나, 아래에서 글자를 붙여 넣어 주세요.</p></div>
+    </div>`;
+  $("setName").value = state.setName;
+  $("mStatus").textContent = n ? `인식 상태: ${gs > 1 ? gs + "개 급수 · " : ""}문장 ${n}개` : "인식된 문장이 없어요";
+  $("startClass").disabled = !n;
+  $("startClass").classList.toggle("opacity-40", !n);
+  $("raw").value = n ? serialize() : "";
+  $("pasteBox").open = !n;
+  renderJump(); renderEditor(); renderPdfBar();
+}
+
+function renderJump() {
+  $("jump").innerHTML = state.groups.map((g, i) => `
+    <button type="button" data-jump="${i}" class="px-3 py-1.5 rounded-full text-label-md shrink-0 transition-colors ${state.open.has(i) ? "bg-primary-container text-on-primary font-bold shadow-sm" : "bg-surface-container hover:bg-surface-container-high font-medium"}">${esc(g.name)}</button>`).join("");
+  $("toggleAll").textContent = state.open.size >= state.groups.length ? "전체 접기" : "전체 펼쳐보기";
+}
+$("jump").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-jump]");
+  if (!b) return;
+  const i = +b.dataset.jump;
+  state.open.add(i);
+  renderJump(); renderEditor();
+  $("grp-" + i)?.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+$("toggleAll").onclick = () => {
+  state.open = state.open.size >= state.groups.length ? new Set() : new Set(state.groups.map((_, i) => i));
+  renderJump(); renderEditor();
+};
+
+function renderEditor() {
+  $("editor").innerHTML = state.groups.map((g, gi) => {
+    const open = state.open.has(gi), num = g.name.replace(/\D/g, "") || gi + 1;
+    const rows = g.items.map((s, k) => `
+      <div class="group flex items-center gap-space-sm p-space-xs hover:bg-surface-container-low rounded-lg transition-colors">
+        <span class="w-8 h-8 rounded-full bg-surface-container-high text-on-surface-variant text-label-lg flex items-center justify-center font-bold shrink-0">${k + 1}</span>
+        <input data-f="s" data-g="${gi}" data-k="${k}" type="text" value="${esc(s)}" class="flex-1 min-w-0 bg-transparent group-hover:bg-surface-container-lowest text-body-lg px-space-sm py-2 rounded-lg font-medium focus:bg-surface-container-lowest focus:outline-none focus:ring-2 focus:ring-primary transition-all">
+        <div class="flex items-center gap-1 shrink-0">
+          <button type="button" data-act="say" data-g="${gi}" data-k="${k}" title="미리듣기" class="w-9 h-9 rounded-full hover:bg-surface-container-high text-on-surface-variant hover:text-primary flex items-center justify-center transition-colors"><span class="material-symbols-outlined text-body-md">volume_up</span></button>
+          <button type="button" data-act="del" data-g="${gi}" data-k="${k}" title="문장 지우기" class="w-9 h-9 rounded-full hover:bg-error-container text-on-surface-variant hover:text-error flex items-center justify-center transition-colors"><span class="material-symbols-outlined text-body-md">delete</span></button>
+        </div>
+      </div>`).join("");
+    return `
+    <div id="grp-${gi}" class="scroll-mt-28 bg-surface-container-lowest rounded-xl ${open ? "shadow-md" : "shadow-sm"} overflow-hidden">
+      <div data-act="toggle" data-g="${gi}" class="px-space-md py-space-sm flex items-center justify-between gap-space-sm flex-wrap cursor-pointer ${open ? "bg-tertiary-fixed/30" : "hover:bg-surface-container-low"} transition-colors">
+        <div class="flex items-center gap-space-sm flex-1 min-w-[240px]">
+          <span class="w-9 h-9 rounded-full ${open ? "bg-primary-container text-on-primary shadow-sm" : "bg-surface-container-high"} text-headline-md flex items-center justify-center font-bold shrink-0">${num}</span>
+          <div class="flex-1 min-w-0">
+            <span class="text-label-md text-on-surface-variant block font-semibold">${esc(g.name)}${open ? " 단원 이름" : ""}</span>
+            ${open ? `<input data-f="unit" data-g="${gi}" type="text" value="${esc(g.unit)}" placeholder="단원 이름 (예: 기분을 말해요)" class="text-headline-md font-bold bg-transparent focus:bg-surface-container-lowest rounded px-1.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-primary w-full max-w-sm">`
+              : `<span class="text-headline-md font-bold block truncate">${esc(g.name)}${g.unit ? " · " + esc(g.unit) : ""}</span>`}
+          </div>
+        </div>
+        <div class="flex items-center gap-space-xs">
+          <span class="bg-secondary-container text-on-secondary-container text-label-md px-2.5 py-1 rounded-full font-bold">${g.items.length}문장</span>
+          <span class="material-symbols-outlined p-1 text-on-surface-variant">${open ? "expand_less" : "expand_more"}</span>
+        </div>
+      </div>
+      ${open ? `<div class="p-space-md flex flex-col gap-space-xs">${rows}
+        <button type="button" data-act="add" data-g="${gi}" class="mt-2 flex items-center justify-center gap-1.5 w-full py-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-primary text-label-lg transition-colors"><span class="material-symbols-outlined text-body-md">add_circle</span><span>${esc(g.name)}에 새 문장 추가하기</span></button></div>` : ""}
+    </div>`;
+  }).join("");
+}
+
+$("editor").addEventListener("click", (e) => {
+  if (e.target.tagName === "INPUT") return;
+  const a = e.target.closest("[data-act]");
+  if (!a) return;
+  const gi = +a.dataset.g, k = +a.dataset.k, g = state.groups[gi];
+  if (a.dataset.act === "toggle") {
+    state.open.has(gi) ? state.open.delete(gi) : state.open.add(gi);
+    renderJump(); renderEditor();
+  } else if (a.dataset.act === "del") {
+    g.items.splice(k, 1);
+    renderEditor(); scheduleSave();
+  } else if (a.dataset.act === "add") {
+    g.items.push("");
+    renderEditor(); scheduleSave();
+    $("editor").querySelector(`input[data-f="s"][data-g="${gi}"][data-k="${g.items.length - 1}"]`)?.focus();
+  } else if (a.dataset.act === "say") {
+    stop();
+    if (g.items[k]) say(g.items[k], +$("rate").value, false, state.token);
+  }
+});
+$("editor").addEventListener("input", (e) => {
+  const t = e.target, g = state.groups[+t.dataset.g];
+  if (!g) return;
+  if (t.dataset.f === "unit") g.unit = t.value;
+  else if (t.dataset.f === "s") g.items[+t.dataset.k] = t.value;
+  scheduleSave();
+});
+
+$("setName").addEventListener("input", () => { state.setName = $("setName").value; renderBadge(); scheduleSave(); });
+$("saveNow").onclick = () => { persist(); toast("💾 저장했어요"); };
+$("startClass").onclick = () => {
+  persist();
+  buildFromText(serialize(), state.g);   // 빈 문장 정리
+  showView("class");
+};
+$("apply").onclick = () => {
+  const text = $("raw").value.trim();
+  state.setId = state.setId; // 같은 급수표를 덮어씀
+  buildFromText(text);
+  if (!countItems()) return toast("문장을 찾지 못했어요. 한 줄에 한 문장씩 적어 주세요.");
+  persist();
+  toast(`✅ 문장 ${countItems()}개로 만들었어요`);
+};
+
+/* ----- 원본 PDF 보기 ----- */
+let pdfSeq = 0, pdfTask = null;
+function renderPdfBar() {
+  const has = !!pdfState.doc;
+  $("pdfName").textContent = has ? pdfState.name : "원본 PDF 없음";
+  $("pdfMeta").textContent = has ? `총 ${pdfState.doc.numPages}쪽` : "";
+  $("pdfTools").classList.toggle("hidden", !has);
+  $("pdfEmpty").classList.toggle("hidden", has);
+  $("pdfCanvas").classList.toggle("hidden", !has);
+  if (has) {
+    $("pdfPage").textContent = `${pdfState.page} / ${pdfState.doc.numPages}`;
+    $("pdfZoom").textContent = Math.round(pdfState.zoom * 100) + "%";
+  }
+}
+async function renderPdfPage() {
+  renderPdfBar();
+  if (!pdfState.doc || state.view !== "manage") return;
+  const seq = ++pdfSeq;
+  const box = $("pdfBox"), w = box.clientWidth;
+  if (!w) return;
+  const page = await pdfState.doc.getPage(pdfState.page);
+  const scale = ((w - 2) / page.getViewport({ scale: 1 }).width) * pdfState.zoom;
+  const vp = page.getViewport({ scale });
+  const dpr = window.devicePixelRatio || 1, canvas = $("pdfCanvas");
+  if (pdfTask) { pdfTask.cancel(); try { await pdfTask.promise; } catch {} }
+  if (seq !== pdfSeq) return;
+  canvas.width = Math.round(vp.width * dpr); canvas.height = Math.round(vp.height * dpr);
+  canvas.style.width = vp.width + "px"; canvas.style.height = vp.height + "px";
+  pdfTask = page.render({ canvasContext: canvas.getContext("2d"), viewport: vp, transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : null });
+  try { await pdfTask.promise; } catch {}
+}
+const pdfGo = (fn) => () => { if (pdfState.doc) { fn(); renderPdfPage(); } };
+$("pdfPrev").onclick = pdfGo(() => { pdfState.page = Math.max(1, pdfState.page - 1); });
+$("pdfNext").onclick = pdfGo(() => { pdfState.page = Math.min(pdfState.doc.numPages, pdfState.page + 1); });
+$("pdfIn").onclick = pdfGo(() => { pdfState.zoom = Math.min(3, pdfState.zoom + 0.25); });
+$("pdfOut").onclick = pdfGo(() => { pdfState.zoom = Math.max(0.5, pdfState.zoom - 0.25); });
+window.addEventListener("resize", () => { if (state.view === "manage") renderPdfPage(); });
+
+/* ================= 목소리 ================= */
+const CLOUD_VOICES = [
+  { id: "ko-KR-Neural2-A", label: "여자 목소리 1", tag: "Neural2-A", badge: "추천" },
+  { id: "ko-KR-Neural2-B", label: "여자 목소리 2", tag: "Neural2-B" },
+  { id: "ko-KR-Neural2-C", label: "남자 목소리 1", tag: "Neural2-C" },
+  { id: "ko-KR-Wavenet-A", label: "여자 목소리 3", tag: "WaveNet-A" },
+  { id: "ko-KR-Wavenet-D", label: "남자 목소리 2", tag: "WaveNet-D" },
+];
+const SAMPLE = "안녕하세요. 받아쓰기를 시작하겠습니다.";
+// 브라우저 목소리 순서: 엣지 Natural > 온라인 > 구글 > 윈도우 기본
+const voiceScore = (v) => /Natural/i.test(v.name) ? 3 : /Online/i.test(v.name) ? 2 : /Google/i.test(v.name) ? 1 : 0;
+// 화면에 보이는 이름만 다듬음 (크롬이 알려주는 이름이 'Google 한국의'라서 '한국어'로 고침. 내부 비교에는 원래 이름을 씀)
+const shortName = (n) => n.replace(/^Microsoft\s+/, "").replace(/\s*-\s*Korean.*$/, "").replace(/한국의/g, "한국어");
+let voices = [];
+
+function loadVoices() {
+  voices = speechSynthesis.getVoices()
+    .filter((v) => v.lang.replace("_", "-").startsWith("ko"))
+    .sort((a, b) => voiceScore(b) - voiceScore(a));
+  const hasKey = !!store.get(API_KEY);
+  const opt = (value, label) => `<option value="${esc(value)}">${esc(label)}</option>`;
+  let html = "";
+  if (hasKey) html += `<optgroup label="⭐ 고품질 (구글 음성)">${CLOUD_VOICES.map((v) => opt("c:" + v.id, "⭐ " + v.label)).join("")}</optgroup>`;
+  if (voices.length) html += `<optgroup label="브라우저 기본 목소리">${voices.map((v) => opt("b:" + v.name, shortName(v.name))).join("")}</optgroup>`;
+  const sel = $("voice");
+  sel.innerHTML = html || opt("b:", "기본 한국어");
+  const keep = store.get(VOICE_KEY);
+  // 직접 고른 적이 없으면 브라우저에 들어 있는 'Google 한국어'를 기본으로, 없으면 첫 번째 목소리
+  const google = voices.find((v) => /Google/i.test(v.name));
+  const fallback = google ? "b:" + google.name : sel.options[0].value;
+  sel.value = keep && [...sel.options].some((o) => o.value === keep) ? keep : fallback;
+  renderVoiceCards();
+}
+
+$("voice").onchange = () => {
+  store.set(VOICE_KEY, $("voice").value);
+  renderVoiceCards();
+  preview($("voice").value);
+};
+
+function preview(value) {
+  stop();
+  say(SAMPLE, +$("rate").value, false, state.token, value);
+}
+
+/* ----- 목소리 설정 창 ----- */
+function openVoiceModal() {
+  $("voiceModal").classList.remove("hidden"); $("voiceModal").classList.add("flex");
+  renderVoiceCards();
+}
+function closeVoiceModal() {
+  $("voiceModal").classList.add("hidden"); $("voiceModal").classList.remove("flex");
+}
+$("vmClose").onclick = closeVoiceModal;
+$("vmDone").onclick = () => { closeVoiceModal(); showView("class"); };
+$("voiceModal").addEventListener("click", (e) => { if (e.target === $("voiceModal")) closeVoiceModal(); });
+$("eye").onclick = () => {
+  const show = $("apiKey").type === "password";
+  $("apiKey").type = show ? "text" : "password";
+  $("eyeIcon").textContent = show ? "visibility" : "visibility_off";
+};
+
+function renderVoiceCards() {
+  const hasKey = !!store.get(API_KEY), selected = $("voice").value;
+  $("keyBanner").classList.toggle("hidden", !hasKey);
+  $("keyBanner").classList.toggle("flex", hasKey);
+  const card = (value, title, tags, desc, locked) => {
+    const on = value === selected;
+    return `
+    <div data-vc="${esc(value)}" class="relative p-space-md rounded-xl flex flex-col justify-between gap-space-md transition-all ${locked ? "bg-surface-container-high/60 opacity-70" : on ? "bg-primary-fixed/30 shadow-md cursor-pointer" : "bg-surface-container-low hover:bg-surface-container shadow-sm cursor-pointer"}">
+      <div class="flex items-start justify-between gap-space-sm">
+        <div class="min-w-0">
+          <div class="flex items-center gap-space-xs flex-wrap mb-1">${tags}</div>
+          <h3 class="text-headline-md font-bold">${title}</h3>
+          <p class="text-label-md text-on-surface-variant mt-0.5">${desc}</p>
+        </div>
+        <div class="w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${on ? "bg-primary text-on-primary shadow-sm" : "bg-surface-container-high text-on-surface-variant"}"><span class="material-symbols-outlined text-[18px]">${locked ? "lock" : on ? "check" : "radio_button_unchecked"}</span></div>
+      </div>
+      <div class="flex items-center justify-between pt-1">
+        <span class="text-label-md ${on ? "text-primary font-bold" : "text-on-surface-variant"}">${on ? "선택됨" : locked ? "API 키를 넣으면 쓸 수 있어요" : "눌러서 선택"}</span>
+        <button type="button" data-pv="${esc(value)}" ${locked ? "disabled" : ""} class="px-space-md py-1.5 rounded-full text-label-md font-bold flex items-center gap-1 shadow-sm transition-colors disabled:opacity-40 ${on ? "bg-primary-container text-on-primary hover:bg-primary" : "bg-surface-container-lowest hover:bg-surface-container-high"}"><span class="material-symbols-outlined text-[17px] ${on ? "" : "text-primary"}">play_arrow</span><span>미리듣기</span></button>
+      </div>
+    </div>`;
+  };
+  const tag = (t, cls) => `<span class="px-space-xs py-0.5 rounded-full text-label-md font-semibold ${cls}">${t}</span>`;
+  const cloud = CLOUD_VOICES.map((v) => card("c:" + v.id, `⭐ ${v.label}`,
+    (v.badge ? tag(v.badge, "bg-primary text-on-primary font-bold") : "") + tag(v.tag, "bg-surface-container-lowest text-on-surface-variant"),
+    "구글의 자연스러운 음성이에요.", !hasKey)).join("");
+  const local = (voices.length ? voices : [{ name: "기본 한국어" }]).map((v) => card("b:" + (v.lang ? v.name : ""), shortName(v.name),
+    tag("API 키 없이 사용", "bg-surface-container-highest text-on-surface-variant") + (voiceScore(v) >= 2 ? tag("온라인 음성", "bg-secondary-container text-on-secondary-container") : ""),
+    voiceScore(v) >= 2 ? "브라우저에 들어 있는 비교적 자연스러운 목소리예요." : "브라우저에 들어 있는 기본 목소리예요. 딱딱하게 들릴 수 있어요.", false)).join("");
+  $("voiceCards").innerHTML = cloud + local;
+}
+$("voiceCards").addEventListener("click", (e) => {
+  const pv = e.target.closest("[data-pv]"), vc = e.target.closest("[data-vc]");
+  if (pv) { if (!pv.disabled) preview(pv.dataset.pv); return; }
+  if (!vc) return;
+  const v = vc.dataset.vc;
+  if (v.startsWith("c:") && !store.get(API_KEY)) { $("apiKey").focus(); return; }
+  if ([...$("voice").options].some((o) => o.value === v)) {
+    $("voice").value = v; store.set(VOICE_KEY, v); renderVoiceCards();
+  }
+});
+
+$("apiKey").value = store.get(API_KEY) || "";
+$("saveKey").onclick = async () => {
+  const key = $("apiKey").value.trim();
+  if (!key) return ($("keyStatus").textContent = "키를 붙여 넣어 주세요.");
+  $("keyStatus").textContent = "확인하는 중…";
+  try {
+    const audio = await cloudAudio(SAMPLE, CLOUD_VOICES[0].id, 0.9, false, key);
+    store.set(API_KEY, key);
+    store.set(VOICE_KEY, "c:" + CLOUD_VOICES[0].id);
+    loadVoices();
+    $("keyStatus").textContent = "✅ 연결됐어요! 목소리 카드에서 ⭐ 목소리를 골라 보세요.";
+    stop();
+    playAudio(audio, state.token);
+  } catch (err) {
+    $("keyStatus").textContent = "❌ " + err.message;
+  }
+};
+$("clearKey").onclick = () => {
+  store.set(API_KEY, null);
+  $("apiKey").value = "";
+  cloudCache.clear();
+  loadVoices();
+  $("keyStatus").textContent = "키를 지웠어요.";
+};
+
+// '1번'은 '한 번'으로 읽히므로 한자어 숫자로 바꿔 읽기 (1~99)
+function numToKo(n) {
+  const d = ["", "일", "이", "삼", "사", "오", "육", "칠", "팔", "구"];
+  const tens = Math.floor(n / 10), ones = n % 10;
+  return (tens ? (tens > 1 ? d[tens] : "") + "십" : "") + d[ones];
+}
+
+/* ================= 읽기 ================= */
+const WORD_PAUSE = 250;   // 띄어 읽기: 어절 사이 쉬는 시간(ms)
+
+// 구글 클라우드 음성: 같은 문장은 한 번만 받아서 다시 씀
+const cloudCache = new Map();
+function cloudAudio(text, voice, rate, words, key = store.get(API_KEY)) {
+  // 띄어 읽기는 어절 사이에 쉼을 넣은 한 덩어리로 받아서 자연스럽게
+  const body = words ? text.split(/\s+/).map(esc).join(`<break time="${WORD_PAUSE}ms"/>`) : esc(text);
+  const id = [voice, rate, words, text].join("|");
+  if (!cloudCache.has(id)) {
+    const req = fetch("https://texttospeech.googleapis.com/v1/text:synthesize?key=" + encodeURIComponent(key), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        input: { ssml: `<speak>${body}</speak>` },
+        voice: { languageCode: "ko-KR", name: voice },
+        audioConfig: { audioEncoding: "MP3", speakingRate: rate },
+      }),
+    }).then(async (res) => {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = data.error?.message || res.statusText;
+        throw new Error(/API key not valid/i.test(msg) ? "API 키가 맞지 않아요. 다시 확인해 주세요."
+          : /has not been used|disabled/i.test(msg) ? "Text-to-Speech API를 '사용'으로 켜 주세요. (켠 뒤 1~2분 기다려야 할 수 있어요)"
+          : /billing/i.test(msg) ? "구글 클라우드에 결제 정보 등록이 필요해요. (무료 한도 안에서는 요금이 나오지 않아요)"
+          : msg);
+      }
+      return "data:audio/mp3;base64," + data.audioContent;
+    });
+    req.catch(() => cloudCache.delete(id));
+    cloudCache.set(id, req);
+  }
+  return cloudCache.get(id);
+}
+
+let currentAudio = null;
+function playAudio(src, my) {
+  return new Promise((resolve) => {
+    if (my !== state.token) return resolve();
+    const a = new Audio(src);
+    currentAudio = a;
+    a.onended = a.onerror = a.onpause = resolve;
+    a.play().catch(resolve);
+  });
+}
+
+function browserSay(text, rate, sel) {
+  return new Promise((resolve) => {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "ko-KR";
+    u.rate = rate;
+    const v = voices.find((x) => x.name === sel.slice(2));
+    if (v) u.voice = v;
+    u.onend = u.onerror = resolve;
+    speechSynthesis.speak(u);
+  });
+}
+
+// 말하기. words=true면 어절마다 쉬면서 읽음
+async function say(text, rate, words = false, my = state.token, sel = $("voice").value) {
+  if (sel.startsWith("c:") && store.get(API_KEY)) {
+    try {
+      return await playAudio(await cloudAudio(text, sel.slice(2), rate, words), my);
+    } catch (err) {
+      toast("⚠️ 고품질 목소리를 불러오지 못해 기본 목소리로 읽어요: " + err.message);
+    }
+  }
+  if (!words) return browserSay(text, rate, sel.startsWith("b:") ? sel : "b:");
+  for (const w of text.split(/\s+/)) {
+    if (my !== state.token) return;
+    await browserSay(w, rate, sel.startsWith("b:") ? sel : "b:");
+    await wait(WORD_PAUSE);
+  }
+}
+
+// 다음 문장을 미리 받아 두어 끊김 없이 이어서 읽기
+function prefetch(pos) {
+  const g = cur(), sel = $("voice").value;
+  if (!g || pos < 0 || pos >= g.items.length || !sel.startsWith("c:") || !store.get(API_KEY)) return;
+  const rate = +$("rate").value;
+  cloudAudio(`${numToKo(pos + 1)} 번.`, sel.slice(2), rate, false).catch(() => {});
+  cloudAudio(g.items[state.order[pos]], sel.slice(2), rate, $("chunk").checked).catch(() => {});
+}
+
+function showTimer(sec = 0, max = 0) {
+  state.timerSec = sec; state.timerMax = max;
+  const run = sec > 0, w = +$("writeTime").value;
+  $("pTimer").classList.toggle("hidden", !run);
+  $("pTimer").classList.toggle("flex", run);
+  $("pTimerText").textContent = sec + "초";
+  const shown = run ? sec : w, m = run ? max : w;
+  $("tvTimer").classList.toggle("hidden", !run && !w);
+  $("tvSec").textContent = shown;
+  $("tvRing").style.strokeDashoffset = m ? 125.6 * (1 - shown / m) : 0;
+}
+
+// 쓸 시간 카운트다운. 중간에 다른 문장을 누르거나 멈추면 false
+async function countdown(sec, my) {
+  for (let s = sec; s > 0; s--) {
+    if (my !== state.token) return false;
+    showTimer(s, sec);
+    await wait(1000);
+  }
+  showTimer(0);
+  return my === state.token;
+}
+
+function refresh() {
+  if (state.view === "class") renderCards();
+  updatePlayer(); updateTV();
+}
+
+async function play(pos) {
+  const g = cur();
+  if (!g || pos < 0 || pos >= g.items.length) return;
+  speechSynthesis.cancel();
+  currentAudio?.pause();
+  const my = ++state.token;
+  state.pos = pos; state.phase = "num"; state.rep = 0; state.reveal = false;
+  showTimer(0);
+  prefetch(pos); prefetch(pos + 1);
+  refresh();
+  document.querySelector(`#list [data-pos="${pos}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+
+  const rate = +$("rate").value, times = +$("repeat").value;
+  const sentence = g.items[state.order[pos]];
+  if ($("readNo").checked) {
+    await say(`${numToKo(pos + 1)} 번.`, rate, false, my);
+    if (my !== state.token) return;
+    await wait(1500);
+    if (my !== state.token) return;
+  }
+  for (let t = 0; t < times; t++) {
+    if (my !== state.token) return;
+    state.phase = "read"; state.rep = t + 1; refresh();
+    await say(sentence, rate, $("chunk").checked, my);
+    if (my !== state.token) return;
+    if (t < times - 1) await wait(2500); // 반복 사이 쓸 시간
+  }
+  if (my !== state.token) return;
+  state.read.add(pos);
+  // 클릭해서 읽을 때는 여기서 끝. 쓸 시간과 다음 문장으로 넘어가기는 '자동 읽기'에서만 함
+  if (!state.auto) { state.phase = "idle"; refresh(); return; }
+
+  state.phase = "write"; refresh();
+  if (!(await countdown(+$("writeTime").value || 3, my))) return;
+  state.phase = "idle"; refresh();
+  if (pos < g.items.length - 1) play(pos + 1);
+  else { setAuto(false); say("받아쓰기가 끝났어요.", rate, false, my); }
+}
+
+function setAuto(on) {
+  state.auto = on;
+  $("autoText").textContent = on ? "일시 정지" : "자동 읽기";
+  $("autoIcon").textContent = on ? "pause" : "fast_forward";
+  $("auto").classList.toggle("bg-secondary", on);
+  $("auto").classList.toggle("bg-primary-container", !on);
+  $("tvAutoText").textContent = on ? "일시 정지" : "자동 읽기";
+  $("tvAutoIcon").textContent = on ? "pause" : "play_arrow";
+}
+
+function toggleAuto() {
+  if (state.auto) { stop(); return; }
+  const g = cur();
+  if (!g) return;
+  setAuto(true);
+  // 이미 다 읽은 문장이면 다음부터, 처음이면 1번부터
+  const start = state.pos < 0 ? 0 : state.read.has(state.pos) ? state.pos + 1 : state.pos;
+  play(Math.min(start, g.items.length - 1));
+}
+
+function stop() {
+  state.token++;
+  speechSynthesis.cancel(); currentAudio?.pause();
+  setAuto(false); showTimer(0);
+  if (state.phase !== "idle") { state.phase = "idle"; if (cur()) refresh(); }
+}
+
+$("again").onclick = () => play(state.pos);
+$("prev").onclick = () => play(state.pos - 1);
+$("next").onclick = () => play(state.pos + 1);
+$("auto").onclick = toggleAuto;
+$("stop").onclick = stop;
+
+// 키보드: → 다음, ← 이전, 스페이스 다시 읽기, Esc 닫기
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { closeTV(); closeVoiceModal(); return; }
+  if (/TEXTAREA|INPUT|SELECT/.test(e.target.tagName)) return;
+  if (state.view !== "class" || !$("voiceModal").classList.contains("hidden")) return;
+  if (e.key === "ArrowRight") { e.preventDefault(); play(state.pos + 1); }
+  if (e.key === "ArrowLeft") { e.preventDefault(); play(state.pos - 1); }
+  if (e.key === " ") { e.preventDefault(); play(Math.max(state.pos, 0)); }
+});
+// 버튼을 누른 뒤 스페이스바가 그 버튼을 또 누르지 않도록
+document.addEventListener("click", (e) => { e.target.closest("button")?.blur(); });
+
+/* ================= 시작 ================= */
+loadSettings();
+initRateChips();
+loadVoices();
+speechSynthesis.onvoiceschanged = loadVoices;
+const last = store.get(LAST);
+if (last && loadSets().some((s) => s.id === last)) openSet(last);
+showView("class");
+</script>
+</body>
+</html>
